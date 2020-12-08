@@ -10,6 +10,7 @@ library(tidyverse)
 library(modelr)
 knitr::opts_chunk$set(message = F,
                       warning = F)
+set.seed(1)
 ```
 
 ## Question 1:
@@ -140,19 +141,70 @@ child_df_modeldata <-
          delwt = log(delwt)) 
 
 child_model_1 <-  lm(bwt~., data = child_df_modeldata)
+```
 
+```{r AIC, results="hide"}
 child_model_2 <- step(child_model_1, direction = "backward")
+```
 
-child_df_modeldata  %>% 
-  add_residuals(child_model_2) %>% 
-  add_predictions(child_model_2) %>% 
+```{r summary model}
+summary(child_model_2)
+child_newmodel <- lm(bwt ~  babysex + bhead + blength + 
+                       fincome + gaweeks + mrace + 
+                       log(ppbmi) + log(ppwt) + wtgain,
+                     data=child_df)
+summary(child_newmodel)
+```
+
+So, our final model will be: 
+
+$bwt = \beta_0+\beta_1babysex+\beta_2bhead+\beta_3blength+\beta_4fincome+\beta_5gaweeks+\beta_6mrace + \beta_7\log(ppbmi)+\beta_8wtgain$
+
+```{r Plot}
+child_df %>% 
+  add_residuals(child_newmodel) %>% 
+  add_predictions(child_newmodel) %>% 
   ggplot(aes(x = pred, y = resid)) +
-  geom_point() +
+  geom_point(alpha = 0.3) +
   stat_smooth(method = "lm")
 ```
 
 
+
 ### Cross Validation: 
+
+```{r Exsiting model:}
+cv_df =
+  crossv_mc(child_df,100) %>% 
+  mutate(
+    new_model = map(.x = train, ~lm(bwt ~  babysex + bhead + blength + 
+                                      fincome + gaweeks + mrace + 
+                                      log(ppbmi) + log(ppwt) + wtgain,
+                                    data = .x)),
+    old_model_1 = map(.x = train, ~lm(bwt~ gaweeks + blength , data = .x)),
+    old_model_2 = map(.x = train, ~lm(bwt~ bhead * blength * babysex, data = .x))
+  ) %>% 
+  mutate(
+    rmse_new = map2_dbl(.x = new_model, .y = test, ~rmse(model = .x, data = .y)),
+    rmse_old_1 = map2_dbl(.x = old_model_1, .y = test, ~rmse(model = .x, data = .y)),
+    rmse_old_2 = map2_dbl(.x = old_model_2, .y = test, ~rmse(model = .x, data = .y))
+  ) 
+  
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) %>% 
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin()
+
+```
+
+
+
 
 ## Question 3:
 
