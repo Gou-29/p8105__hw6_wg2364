@@ -100,7 +100,59 @@ result_all %>%
 
 ## Quesiton 2:
 
+### Import and tidy the data
 
+```{r Q2-Import and tidy the data}
+#Read and clean the data:
+child_df <-
+  read_csv("./data/birthweight.csv") %>% 
+  mutate(babysex = as.factor(babysex),
+         frace = as.factor(frace),
+         mrace = as.factor(mrace),
+         malform = as.factor(malform))
+
+#Check and initial explore of the dataset
+skimr::skim(child_df) 
+
+#Check the levels of factors:
+unique(pull(child_df, babysex))
+unique(pull(child_df, frace))
+unique(pull(child_df, mrace))
+unique(pull(child_df, malform))
+```
+
+We can see that, there are no missing data in the dataset. From the glance of the data, focus on the continuous variable, we can see that all the data entry in the variable `pnumlbw` (previous number of low birth weight babies) and  `pnumsga` (number of prior small for gestational age babies) are zero, so we can drop these two variables. For some variable that is highly skewed, like `parity` (number of live births prior to this pregnancy) and `smoken` (average number of cigarettes smoked per day during pregnancy), it may not be appropriate to include the main model or should be treated as factors.
+
+For discreet variables, we checked the level of them. Also, the variable `malform` is highly skewed and may not be appropriate to included in the meta analysis. 
+
+### Model building: 
+
+
+As the description above, we would like to use all the remaining variables. Also, some transformation need to be done. Then, we apply an AIC framework to select the most important variables. Also, as mothers race and fathers race are highly correlated, fathers race was droped in the model. 
+
+```{r Select relevant variables}
+child_df_modeldata <-
+  child_df %>% 
+  select(-pnumlbw,-pnumsga,-parity,-smoken,-malform, -frace) %>%
+  mutate(momage = log(momage),
+         ppbmi = log(ppbmi),
+         ppwt = log(ppwt),
+         delwt = log(delwt)) 
+
+child_model_1 <-  lm(bwt~., data = child_df_modeldata)
+
+child_model_2 <- step(child_model_1, direction = "backward")
+
+child_df_modeldata  %>% 
+  add_residuals(child_model_2) %>% 
+  add_predictions(child_model_2) %>% 
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point() +
+  stat_smooth(method = "lm")
+```
+
+
+### Cross Validation: 
 
 ## Question 3:
 
