@@ -62,6 +62,42 @@ result_Baltimore <-
 
 ```
 
+
+### Logistic regression on all cities:
+
+```{r model for all cities}
+result_all <-
+  homicide_clean %>% 
+  nest(glm_data = -city_state) %>% 
+  mutate(model = map(.x =glm_data, ~glm(resolution ~ victim_age + victim_race + victim_sex, 
+                                   data =.x,
+                                   family = binomial())),
+         result = map(model,broom::tidy)) %>% 
+  select(city_state, result) %>% 
+  unnest(result) %>% 
+  mutate(
+    odd_ratio = exp(estimate),
+    CI_lower = exp(estimate - 1.96 * std.error),
+    CI_upper = exp(estimate + 1.96 * std.error)
+  ) %>% 
+  select(city_state, term, odd_ratio, starts_with("CI")) 
+  
+```
+
+### Plots of odd ratio and CIs:
+
+```{r Plots of odd ratio and CIs}
+result_all %>% 
+  filter(term == "victim_sexMale") %>% 
+  mutate(city_state = fct_reorder(city_state, odd_ratio )) %>% 
+  ggplot(aes(x = city_state, y = odd_ratio)) + 
+  geom_point() + 
+  geom_errorbar(aes(ymin = CI_lower, ymax = CI_upper)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+
 ## Quesiton 2:
 
 
