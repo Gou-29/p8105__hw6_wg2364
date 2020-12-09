@@ -190,7 +190,8 @@ cv_df =
     rmse_old_2 = map2_dbl(.x = old_model_2, .y = test, ~rmse(model = .x, data = .y))
   ) 
   
-cv_df %>% 
+plot <-
+  cv_df %>% 
   select(starts_with("rmse")) %>% 
   pivot_longer(
     everything(),
@@ -201,6 +202,7 @@ cv_df %>%
   ggplot(aes(x = model, y = rmse)) +
   geom_violin()
 
+plot
 ```
 
 
